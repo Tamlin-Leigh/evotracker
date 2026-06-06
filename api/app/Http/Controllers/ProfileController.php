@@ -2,49 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Services\FirestoreService;
 use Illuminate\Http\JsonResponse;
-use Kreait\Firebase\Contract\Firestore;
+use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    public function __construct(protected Firestore $firestore) {}
+    public function __construct(private FirestoreService $firestore) {}
 
     public function show(Request $request): JsonResponse
     {
-        $uid = $request->firebase_uid;
-        $doc = $this->firestore->database()
-            ->collection('users')->document($uid)
-            ->collection('profile')->document('data')
-            ->snapshot();
+        $uid  = $request->firebase_uid;
+        $data = $this->firestore->getDocument("users/{$uid}/profile/data");
 
-        if (!$doc->exists()) {
-            return response()->json(null, 404);
-        }
-
-        return response()->json($doc->data());
+        return $data
+            ? response()->json($data)
+            : response()->json(null, 404);
     }
 
     public function update(Request $request): JsonResponse
     {
         $request->validate([
-            'height' => 'nullable|numeric',
-            'age'    => 'nullable|integer',
-            'gender' => 'nullable|string',
+            'height'    => 'nullable|numeric',
+            'age'       => 'nullable|integer',
+            'gender'    => 'nullable|string',
             'goal_note' => 'nullable|string|max:500',
         ]);
 
         $uid = $request->firebase_uid;
-        $this->firestore->database()
-            ->collection('users')->document($uid)
-            ->collection('profile')->document('data')
-            ->set(array_filter([
-                'height'    => $request->height,
-                'age'       => $request->age,
-                'gender'    => $request->gender,
-                'goal_note' => $request->goal_note,
-                'updated_at' => now()->toDateTimeString(),
-            ], fn($v) => !is_null($v)), ['merge' => true]);
+        $fields = array_filter([
+            'height'     => $request->height,
+            'age'        => $request->age,
+            'gender'     => $request->gender,
+            'goal_note'  => $request->goal_note,
+            'updated_at' => now()->toDateTimeString(),
+        ], fn($v) => !is_null($v));
+
+        $this->firestore->setDocument("users/{$uid}/profile/data", $fields, true);
 
         return response()->json(['message' => 'Profile updated.']);
     }

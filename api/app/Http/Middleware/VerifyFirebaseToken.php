@@ -4,14 +4,12 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Kreait\Firebase\Contract\Auth;
-use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
+use Kreait\Firebase\JWT\IdTokenVerifier;
+use Kreait\Firebase\JWT\Error\IdTokenVerificationFailed;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyFirebaseToken
 {
-    public function __construct(protected Auth $auth) {}
-
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken();
@@ -21,9 +19,10 @@ class VerifyFirebaseToken
         }
 
         try {
-            $verifiedToken = $this->auth->verifyIdToken($token);
-            $request->merge(['firebase_uid' => $verifiedToken->claims()->get('sub')]);
-        } catch (FailedToVerifyToken) {
+            $verifier = IdTokenVerifier::createWithProjectId(config('firebase.project_id'));
+            $verified = $verifier->verifyIdToken($token);
+            $request->merge(['firebase_uid' => $verified->uid()]);
+        } catch (IdTokenVerificationFailed $e) {
             return response()->json(['error' => 'Invalid token.'], 401);
         }
 

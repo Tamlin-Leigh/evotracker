@@ -2,51 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Services\FirestoreService;
 use Illuminate\Http\JsonResponse;
-use Kreait\Firebase\Contract\Firestore;
+use Illuminate\Http\Request;
 
 class MeasurementController extends Controller
 {
-    public function __construct(protected Firestore $firestore) {}
+    public function __construct(private FirestoreService $firestore) {}
 
     public function index(Request $request): JsonResponse
     {
-        $uid = $request->firebase_uid;
-        $docs = $this->firestore->database()
-            ->collection('users')->document($uid)
-            ->collection('measurements')
-            ->orderBy('measured_at', 'DESC')
-            ->documents();
+        $uid  = $request->firebase_uid;
+        $docs = $this->firestore->runQuery(
+            "users/{$uid}",
+            'measurements',
+            [['field' => 'measured_at', 'direction' => 'DESCENDING']]
+        );
 
-        $measurements = [];
-        foreach ($docs as $doc) {
-            if ($doc->exists()) {
-                $measurements[] = array_merge(['id' => $doc->id()], $doc->data());
-            }
-        }
-
-        return response()->json($measurements);
+        return response()->json($docs);
     }
 
     public function byPart(Request $request, string $part): JsonResponse
     {
-        $uid = $request->firebase_uid;
-        $docs = $this->firestore->database()
-            ->collection('users')->document($uid)
-            ->collection('measurements')
-            ->where('body_part', '=', $part)
-            ->orderBy('measured_at', 'ASC')
-            ->documents();
+        $uid  = $request->firebase_uid;
+        $docs = $this->firestore->runQuery(
+            "users/{$uid}",
+            'measurements',
+            [['field' => 'measured_at', 'direction' => 'ASCENDING']],
+            ['field' => 'body_part', 'op' => 'EQUAL', 'value' => $part]
+        );
 
-        $measurements = [];
-        foreach ($docs as $doc) {
-            if ($doc->exists()) {
-                $measurements[] = array_merge(['id' => $doc->id()], $doc->data());
-            }
-        }
-
-        return response()->json($measurements);
+        return response()->json($docs);
     }
 
     public function store(Request $request): JsonResponse
@@ -58,26 +44,20 @@ class MeasurementController extends Controller
         ]);
 
         $uid = $request->firebase_uid;
-        $ref = $this->firestore->database()
-            ->collection('users')->document($uid)
-            ->collection('measurements')
-            ->add([
-                'body_part'   => $request->body_part,
-                'value_cm'    => (float) $request->value_cm,
-                'measured_at' => $request->measured_at,
-                'created_at'  => now()->toDateTimeString(),
-            ]);
+        $id  = $this->firestore->addDocument("users/{$uid}/measurements", [
+            'body_part'   => $request->body_part,
+            'value_cm'    => (float) $request->value_cm,
+            'measured_at' => $request->measured_at,
+            'created_at'  => now()->toDateTimeString(),
+        ]);
 
-        return response()->json(['id' => $ref->id(), 'message' => 'Measurement saved.'], 201);
+        return response()->json(['id' => $id, 'message' => 'Measurement saved.'], 201);
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
         $uid = $request->firebase_uid;
-        $this->firestore->database()
-            ->collection('users')->document($uid)
-            ->collection('measurements')->document($id)
-            ->delete();
+        $this->firestore->deleteDocument("users/{$uid}/measurements/{$id}");
 
         return response()->json(['message' => 'Measurement deleted.']);
     }
