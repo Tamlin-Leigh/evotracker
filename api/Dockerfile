@@ -13,7 +13,7 @@ COPY . .
 
 RUN cp .env.example .env
 
-RUN composer install --optimize-autoloader --no-dev
+RUN composer install --optimize-autoloader --no-dev --no-audit
 
 RUN php artisan package:discover --ansi
 
