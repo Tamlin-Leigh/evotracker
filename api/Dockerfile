@@ -15,6 +15,8 @@ RUN cp .env.example .env
 
 RUN composer install --optimize-autoloader --no-dev
 
+RUN php artisan package:discover --ansi
+
 RUN php artisan key:generate
 
 RUN chmod -R 775 storage bootstrap/cache
