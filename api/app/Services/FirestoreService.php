@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use Google\Auth\Credentials\ServiceAccountCredentials;
-use Google\Auth\Middleware\AuthTokenMiddleware;
+use Firebase\JWT\JWT;
 use GuzzleHttp\Client;
-use GuzzleHttp\HandlerStack;
 
 class FirestoreService
 {
@@ -14,31 +12,33 @@ class FirestoreService
 
     public function __construct()
     {
-        $credentialsPath = config('firebase.credentials');
-        $credentials = json_decode(file_get_contents($credentialsPath), true);
-        $projectId = $credentials['project_id'];
+        $credentials  = json_decode(file_get_contents(config('firebase.credentials')), true);
+        $projectId    = $credentials['project_id'];
+        $accessToken  = $this->getAccessToken($credentials);
 
-        $serviceAccount = new ServiceAccountCredentials(
-            'https://www.googleapis.com/auth/datastore',
-            $credentials
-        );
-
-        $stack = HandlerStack::create();
-        $stack->push(new AuthTokenMiddleware($serviceAccount));
-
-        $this->client = new Client(['handler' => $stack, 'auth' => 'google_auth']);
+        $this->client  = new Client(['headers' => ['Authorization' => "Bearer {$accessToken}"]]);
         $this->baseUrl = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/";
     }
 
-    public function listDocuments(string $path): array
+    private function getAccessToken(array $credentials): string
     {
-        $response = $this->client->get($this->baseUrl . $path);
-        $data = json_decode($response->getBody(), true);
+        $now = time();
+        $jwt = JWT::encode([
+            'iss'   => $credentials['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/datastore',
+            'aud'   => 'https://oauth2.googleapis.com/token',
+            'exp'   => $now + 3600,
+            'iat'   => $now,
+        ], $credentials['private_key'], 'RS256');
 
-        return array_map(
-            fn($doc) => $this->parseDocument($doc),
-            $data['documents'] ?? []
-        );
+        $response = (new Client())->post('https://oauth2.googleapis.com/token', [
+            'form_params' => [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion'  => $jwt,
+            ],
+        ]);
+
+        return json_decode($response->getBody(), true)['access_token'];
     }
 
     public function runQuery(string $parent, string $collectionId, array $orderBy = [], array $where = []): array
@@ -46,13 +46,11 @@ class FirestoreService
         $query = ['from' => [['collectionId' => $collectionId]]];
 
         if (!empty($where)) {
-            $query['where'] = [
-                'fieldFilter' => [
-                    'field' => ['fieldPath' => $where['field']],
-                    'op'    => $where['op'],
-                    'value' => $this->encodeValue($where['value']),
-                ],
-            ];
+            $query['where'] = ['fieldFilter' => [
+                'field' => ['fieldPath' => $where['field']],
+                'op'    => $where['op'],
+                'value' => $this->encodeValue($where['value']),
+            ]];
         }
 
         if (!empty($orderBy)) {
@@ -62,10 +60,7 @@ class FirestoreService
             ], $orderBy);
         }
 
-        $url = "https://firestore.googleapis.com/v1/projects/" .
-               explode('projects/', $this->baseUrl)[1];
-        $url = str_replace('/documents/', "/documents/{$parent}:runQuery", $this->baseUrl);
-
+        $url      = $this->baseUrl . "{$parent}:runQuery";
         $response = $this->client->post($url, ['json' => ['structuredQuery' => $query]]);
         $results  = json_decode($response->getBody(), true);
 
@@ -93,22 +88,16 @@ class FirestoreService
         $response = $this->client->post($this->baseUrl . $path, [
             'json' => ['fields' => $this->encodeDocument($data)],
         ]);
-        $doc = json_decode($response->getBody(), true);
-        return basename($doc['name']);
+        return basename(json_decode($response->getBody(), true)['name']);
     }
 
     public function setDocument(string $path, array $data, bool $merge = false): void
     {
         $url = $this->baseUrl . $path;
-
         if ($merge) {
-            $mask = implode('&', array_map(fn($k) => "updateMask.fieldPaths={$k}", array_keys($data)));
-            $url .= '?' . $mask;
+            $url .= '?' . implode('&', array_map(fn($k) => "updateMask.fieldPaths={$k}", array_keys($data)));
         }
-
-        $this->client->patch($url, [
-            'json' => ['fields' => $this->encodeDocument($data)],
-        ]);
+        $this->client->patch($url, ['json' => ['fields' => $this->encodeDocument($data)]]);
     }
 
     public function deleteDocument(string $path): void
@@ -118,22 +107,18 @@ class FirestoreService
 
     private function encodeDocument(array $data): array
     {
-        $fields = [];
-        foreach ($data as $key => $value) {
-            $fields[$key] = $this->encodeValue($value);
-        }
-        return $fields;
+        return array_combine(array_keys($data), array_map(fn($v) => $this->encodeValue($v), $data));
     }
 
     private function encodeValue(mixed $value): array
     {
         return match (true) {
-            is_null($value)   => ['nullValue' => null],
-            is_bool($value)   => ['booleanValue' => $value],
-            is_int($value)    => ['integerValue' => (string) $value],
-            is_float($value)  => ['doubleValue' => $value],
-            is_array($value)  => ['mapValue' => ['fields' => $this->encodeDocument($value)]],
-            default           => ['stringValue' => (string) $value],
+            is_null($value)  => ['nullValue' => null],
+            is_bool($value)  => ['booleanValue' => $value],
+            is_int($value)   => ['integerValue' => (string) $value],
+            is_float($value) => ['doubleValue' => $value],
+            is_array($value) => ['mapValue' => ['fields' => $this->encodeDocument($value)]],
+            default          => ['stringValue' => (string) $value],
         };
     }
 
@@ -154,11 +139,8 @@ class FirestoreService
             isset($value['doubleValue'])  => (float) $value['doubleValue'],
             isset($value['booleanValue']) => $value['booleanValue'],
             isset($value['nullValue'])    => null,
-            isset($value['mapValue'])     => array_map(
-                fn($v) => $this->decodeValue($v),
-                $value['mapValue']['fields'] ?? []
-            ),
-            default => null,
+            isset($value['mapValue'])     => array_map(fn($v) => $this->decodeValue($v), $value['mapValue']['fields'] ?? []),
+            default                       => null,
         };
     }
 }

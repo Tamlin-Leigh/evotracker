@@ -7,7 +7,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "google/auth": "^1.0",
         "kreait/firebase-tokens": "^5.0",
         "laravel/framework": "^11.31",
         "laravel/tinker": "^2.9"
