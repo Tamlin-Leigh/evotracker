@@ -1,5 +1,4 @@
 firebase-credentials.json
-firebase-credentials-dev.json
 backend/
 node_modules/
 package.json
