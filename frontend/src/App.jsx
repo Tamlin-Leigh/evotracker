@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Measurements from './pages/Measurements';
 import Progress from './pages/Progress';
@@ -10,10 +9,10 @@ import Progress from './pages/Progress';
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#1565c0' },
+    primary: { main: '#07A0B8', dark: '#445494' },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", sans-serif',
+    fontFamily: '"Plus Jakarta Sans", "Inter", "Roboto", sans-serif',
   },
 });
 
@@ -30,7 +29,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<Navigate to="/login" replace />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/measurements" element={<ProtectedRoute><Measurements /></ProtectedRoute>} />
           <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
