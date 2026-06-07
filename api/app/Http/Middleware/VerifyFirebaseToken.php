@@ -2,10 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use Beste\Clock\SystemClock;
 use Closure;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
-use Kreait\Firebase\JWT\IdTokenVerifier;
+use Kreait\Firebase\JWT\Action\FetchGooglePublicKeys\WithGuzzle;
+use Kreait\Firebase\JWT\Action\VerifyIdToken\WithLcobucciJWT;
 use Kreait\Firebase\JWT\Error\IdTokenVerificationFailed;
+use Kreait\Firebase\JWT\GooglePublicKeys;
+use Kreait\Firebase\JWT\IdTokenVerifier;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyFirebaseToken
@@ -19,13 +24,26 @@ class VerifyFirebaseToken
         }
 
         try {
-            $verifier = IdTokenVerifier::createWithProjectId(config('firebase.project_id'));
-            $verified = $verifier->verifyIdToken($token);
-            $request->merge(['firebase_uid' => $verified->uid()]);
+            $verifier = $this->buildVerifier();
+            $verified  = $verifier->verifyIdToken($token);
+            $request->merge(['firebase_uid' => $verified->payload()['sub']]);
         } catch (IdTokenVerificationFailed $e) {
             return response()->json(['error' => 'Invalid token.'], 401);
         }
 
         return $next($request);
+    }
+
+    private function buildVerifier(): IdTokenVerifier
+    {
+        $clock  = SystemClock::create();
+        $caFile = ini_get('curl.cainfo') ?: true;
+
+        $guzzle     = new Client(['http_errors' => false, 'verify' => $caFile]);
+        $keyHandler = new WithGuzzle($guzzle, $clock);
+        $keys       = new GooglePublicKeys($keyHandler, $clock);
+        $handler    = new WithLcobucciJWT(config('firebase.project_id'), $keys, $clock);
+
+        return new IdTokenVerifier($handler);
     }
 }
