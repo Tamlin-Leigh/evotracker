@@ -25,50 +25,70 @@ A body measurement tracking app. Log measurements across multiple body parts, vi
 
 ## Firebase Setup
 
-Before running the app you need a Firebase project configured.
+The app uses **two separate Firebase projects** — one for development and one for production. This ensures local testing never touches real user data.
 
-1. Go to the [Firebase Console](https://console.firebase.google.com/) and create a project (or use an existing one).
-2. Enable **Authentication** → Sign-in methods: Email/Password and Google.
-3. Enable **Firestore Database** in production or test mode.
-4. Go to **Project Settings → Service Accounts → Generate new private key** and download the JSON file.
-5. Place the downloaded JSON file at the repo root and name it `firebase-credentials.json`.
+### 1. Create two Firebase projects
+
+In the [Firebase Console](https://console.firebase.google.com/), create:
+
+- `evotracker-dev` — for local development
+- `evotracker` (or your chosen name) — for production
+
+For **each** project:
+1. Enable **Authentication** → Sign-in methods: Email/Password and Google.
+2. Enable **Firestore Database**.
+3. Go to **Project Settings → Service Accounts → Generate new private key** and download the JSON.
+
+### 2. Place credentials files
+
+Save the downloaded files at the repo root (both are gitignored):
+
+```
+firebase-credentials-dev.json   ← dev project service account key
+firebase-credentials.json       ← production project service account key
+```
 
 ---
 
 ## Environment Variables
 
-### Frontend (`frontend/.env`)
+### Frontend
 
-Create `frontend/.env` (copy from `frontend/.env.example` if present):
+```bash
+# Copy the example and fill in your DEV project's Firebase config
+cp frontend/.env.example frontend/.env
+```
+
+Find the values in your **dev** Firebase project under **Project Settings → General → Your apps → Web app → Config**.
 
 ```env
 VITE_API_URL=http://localhost:8080/api
 
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=evotracker-dev.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=evotracker-dev
+VITE_FIREBASE_STORAGE_BUCKET=evotracker-dev.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
 ```
 
-Find these values in your Firebase project under **Project Settings → General → Your apps**.
+`frontend/.env.production` contains the production Firebase values and is used automatically by `npm run build`.
 
-### Backend (`api/.env`)
-
-Copy the example and fill in your values:
+### Backend
 
 ```bash
 cp api/.env.example api/.env
 ```
 
-Key variables to set:
+Key variables to set (use your **dev** project locally):
 
 ```env
-APP_KEY=                          # generated below
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_CREDENTIALS=/absolute/path/to/firebase-credentials.json
+APP_KEY=                                          # generated below
+FIREBASE_PROJECT_ID=evotracker-dev
+FIREBASE_CREDENTIALS=/absolute/path/to/firebase-credentials-dev.json
 ```
+
+Production values (`evotracker` project + production credentials) are set as environment variables on Render.com — never in this file.
 
 ---
 
