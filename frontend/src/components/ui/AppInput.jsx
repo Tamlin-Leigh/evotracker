@@ -13,6 +13,11 @@ const sx = {
   '& .MuiOutlinedInput-input': { py: '11px' },
   '& input::placeholder': { color: '#adb5bd', opacity: 1 },
   '& input': { color: '#111' },
+  '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus': {
+    WebkitBoxShadow: '0 0 0 1000px #f9fafb inset',
+    WebkitTextFillColor: '#111',
+    caretColor: '#111',
+  },
 };
 
 export default function AppInput({ inputProps, ...props }) {

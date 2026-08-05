@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
+import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Measurements from './pages/Measurements';
 import Progress from './pages/Progress';
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Navigate to="/login" replace />} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/measurements" element={<ProtectedRoute><Measurements /></ProtectedRoute>} />
           <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
