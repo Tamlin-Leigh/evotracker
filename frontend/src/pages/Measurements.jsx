@@ -2,20 +2,25 @@ import { useRef, useState } from 'react';
 import api from '../services/api';
 import { Link } from 'react-router-dom';
 import {
-  AppBar, Box, Button, Container,
-  Grid, MenuItem, Paper, TextField, Toolbar,
-  Typography, Snackbar,
+  AppBar, Box, Button, Container, IconButton,
+  Grid, MenuItem, Paper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, TextField, Toolbar,
+  Typography, Snackbar, CircularProgress,
 } from '@mui/material';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import BodyOutline, { DISPLAY_WIDTH } from '../components/BodyOutline';
 import { BODY_PARTS, formatBodyPartLabel } from '../config/bodyParts';
+import { useMeasurements } from '../hooks/useMeasurements';
 
 export default function Measurements() {
   const [form, setForm] = useState({ body_part: '', value_cm: '' });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast] = useState('');
   const valueInputRef = useRef(null);
+  const { measurements, loading, refetch } = useMeasurements();
 
   const handleSelectPart = (part) => {
     setForm(f => ({ ...f, body_part: part }));
@@ -29,10 +34,23 @@ export default function Measurements() {
       await api.post('/measurements', form);
       setForm({ body_part: '', value_cm: '' });
       setToast('Measurement saved!');
+      refetch();
     } catch {
       setToast('Failed to save measurement.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    try {
+      await api.delete(`/measurements/${id}`);
+      refetch();
+    } catch {
+      setToast('Failed to delete measurement.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -53,36 +71,79 @@ export default function Measurements() {
             <BodyOutline selectedPart={form.body_part} onSelectPart={handleSelectPart} />
           </Paper>
 
-          <Paper elevation={2} sx={{ p: 3, flexGrow: 1, width: '100%' }}>
-            <Typography variant="h6" mb={2}>Log a Measurement</Typography>
-            <Box component="form" onSubmit={handleSubmit}>
-              <Grid container spacing={2}>
-                <Grid size={12}>
-                  <TextField
-                    select label="Body Part" value={form.body_part} fullWidth required
-                    onChange={e => setForm(f => ({ ...f, body_part: e.target.value }))}
-                  >
-                    {BODY_PARTS.map(p => (
-                      <MenuItem key={p} value={p}>{formatBodyPartLabel(p)}</MenuItem>
-                    ))}
-                  </TextField>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flexGrow: 1, width: '100%' }}>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" mb={2}>Log a Measurement</Typography>
+              <Box component="form" onSubmit={handleSubmit}>
+                <Grid container spacing={2}>
+                  <Grid size={12}>
+                    <TextField
+                      select label="Body Part" value={form.body_part} fullWidth required
+                      onChange={e => setForm(f => ({ ...f, body_part: e.target.value }))}
+                    >
+                      {BODY_PARTS.map(p => (
+                        <MenuItem key={p} value={p}>{formatBodyPartLabel(p)}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+                  <Grid size={12}>
+                    <TextField
+                      label="Value (cm)" type="number" value={form.value_cm} fullWidth required
+                      inputProps={{ step: '0.1', min: '0' }}
+                      onChange={e => setForm(f => ({ ...f, value_cm: e.target.value }))}
+                      inputRef={valueInputRef}
+                    />
+                  </Grid>
+                  <Grid size={12}>
+                    <Button type="submit" variant="contained" fullWidth disabled={saving}>
+                      {saving ? 'Saving…' : 'Save Measurement'}
+                    </Button>
+                  </Grid>
                 </Grid>
-                <Grid size={12}>
-                  <TextField
-                    label="Value (cm)" type="number" value={form.value_cm} fullWidth required
-                    inputProps={{ step: '0.1', min: '0' }}
-                    onChange={e => setForm(f => ({ ...f, value_cm: e.target.value }))}
-                    inputRef={valueInputRef}
-                  />
-                </Grid>
-                <Grid size={12}>
-                  <Button type="submit" variant="contained" fullWidth disabled={saving}>
-                    {saving ? 'Saving…' : 'Save Measurement'}
-                  </Button>
-                </Grid>
-              </Grid>
-            </Box>
-          </Paper>
+              </Box>
+            </Paper>
+
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" mb={2}>Logged Measurements</Typography>
+              {loading ? (
+                <Box display="flex" justifyContent="center" py={4}><CircularProgress size={28} /></Box>
+              ) : measurements.length === 0 ? (
+                <Typography color="text.secondary">No measurements logged yet.</Typography>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Body Part</TableCell>
+                        <TableCell align="right">Value (cm)</TableCell>
+                        <TableCell>Logged At</TableCell>
+                        <TableCell align="right" />
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {measurements.map(m => (
+                        <TableRow key={m.id} hover>
+                          <TableCell>{formatBodyPartLabel(m.body_part)}</TableCell>
+                          <TableCell align="right">{m.value_cm}</TableCell>
+                          <TableCell>{new Date(m.measured_at).toLocaleString()}</TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              aria-label="Delete measurement"
+                              disabled={deletingId === m.id}
+                              onClick={() => handleDelete(m.id)}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Paper>
+          </Box>
         </Box>
       </Container>
 
