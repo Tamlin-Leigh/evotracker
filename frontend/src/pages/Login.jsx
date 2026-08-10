@@ -51,7 +51,7 @@ export default function AuthPage() {
     setBusy(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
+      navigate('/onboarding');
     } catch (err) {
       setError(err.message ?? 'Could not create account.');
     } finally {

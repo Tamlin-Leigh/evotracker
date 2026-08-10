@@ -38,17 +38,17 @@ class MeasurementController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'body_part'   => 'required|string',
-            'value_cm'    => 'required|numeric',
-            'measured_at' => 'required|date',
+            'body_part' => 'required|string',
+            'value_cm'  => 'required|numeric',
         ]);
 
         $uid = $request->firebase_uid;
+        $now = now()->toDateTimeString();
         $id  = $this->firestore->addDocument("users/{$uid}/measurements", [
             'body_part'   => $request->body_part,
             'value_cm'    => (float) $request->value_cm,
-            'measured_at' => $request->measured_at,
-            'created_at'  => now()->toDateTimeString(),
+            'measured_at' => $now,
+            'created_at'  => $now,
         ]);
 
         return response()->json(['id' => $id, 'message' => 'Measurement saved.'], 201);
