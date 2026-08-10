@@ -42,14 +42,30 @@ class MeasurementController extends Controller
             'value_cm'  => 'required|numeric',
         ]);
 
-        $uid = $request->firebase_uid;
-        $now = now()->toDateTimeString();
-        $id  = $this->firestore->addDocument("users/{$uid}/measurements", [
+        $uid   = $request->firebase_uid;
+        $now   = now();
+        $today = $now->toDateString();
+
+        $existing = collect($this->firestore->runQuery(
+            "users/{$uid}",
+            'measurements',
+            [],
+            ['field' => 'body_part', 'op' => 'EQUAL', 'value' => $request->body_part]
+        ))->first(fn ($doc) => str_starts_with($doc['measured_at'], $today));
+
+        $data = [
             'body_part'   => $request->body_part,
             'value_cm'    => (float) $request->value_cm,
-            'measured_at' => $now,
-            'created_at'  => $now,
-        ]);
+            'measured_at' => $now->toDateTimeString(),
+        ];
+
+        if ($existing) {
+            $id = $existing['id'];
+            $this->firestore->setDocument("users/{$uid}/measurements/{$id}", $data, merge: true);
+        } else {
+            $data['created_at'] = $now->toDateTimeString();
+            $id = $this->firestore->addDocument("users/{$uid}/measurements", $data);
+        }
 
         return response()->json(['id' => $id, 'message' => 'Measurement saved.'], 201);
     }
