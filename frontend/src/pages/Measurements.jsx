@@ -54,6 +54,10 @@ export default function Measurements() {
     }
   };
 
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todaysMeasurements = measurements.filter(m => m.measured_at.startsWith(todayStr));
+
   return (
     <Box>
       <AppBar position="static" color="primary" elevation={1}>
@@ -109,6 +113,8 @@ export default function Measurements() {
                 <Box display="flex" justifyContent="center" py={4}><CircularProgress size={28} /></Box>
               ) : measurements.length === 0 ? (
                 <Typography color="text.secondary">No measurements logged yet.</Typography>
+              ) : todaysMeasurements.length === 0 ? (
+                <Typography color="text.secondary">New measurements for a new day — nothing logged yet today.</Typography>
               ) : (
                 <TableContainer>
                   <Table size="small">
@@ -121,7 +127,7 @@ export default function Measurements() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {measurements.map(m => (
+                      {todaysMeasurements.map(m => (
                         <TableRow key={m.id} hover>
                           <TableCell>{formatBodyPartLabel(m.body_part)}</TableCell>
                           <TableCell align="right">{m.value_cm}</TableCell>

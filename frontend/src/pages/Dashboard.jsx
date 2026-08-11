@@ -8,13 +8,12 @@ import {
   Container, Stack, Toolbar, Typography, useTheme,
 } from '@mui/material';
 import {
-  Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import HistoryIcon from '@mui/icons-material/History';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import AddchartIcon from '@mui/icons-material/Addchart';
-import { formatBodyPartLabel } from '../config/bodyParts';
 
 function StatTile({ icon, iconColor, label, value, caption }) {
   return (
@@ -64,17 +63,32 @@ export default function Dashboard() {
     (byPart[m.body_part] ??= []).push(m);
   }
 
-  let lossStat = null;
+  const daysLogged = new Set(measurements.map(m => m.measured_at.slice(0, 10))).size;
+
+  let totalLoss = 0;
   for (const part of Object.keys(byPart)) {
     const entries = byPart[part];
     if (entries.length < 2) continue;
     const loss = entries[entries.length - 1].value_cm - entries[0].value_cm;
-    if (!lossStat || loss > lossStat.loss) lossStat = { part, loss };
+    if (loss > 0) totalLoss += loss;
   }
 
-  const chartData = Object.keys(byPart)
-    .map(part => ({ part: formatBodyPartLabel(part), cm: byPart[part][0].value_cm }))
-    .sort((a, b) => a.part.localeCompare(b.part));
+  const updatesByDate = {};
+  for (const m of measurements) {
+    const date = m.measured_at.slice(0, 10);
+    (updatesByDate[date] ??= {})[m.body_part] = m.value_cm;
+  }
+  const trendDates = Object.keys(updatesByDate).sort();
+  const runningValues = {};
+  const trendData = trendDates.map(date => {
+    Object.assign(runningValues, updatesByDate[date]);
+    const total = Object.values(runningValues).reduce((sum, v) => sum + v, 0);
+    return {
+      date,
+      label: new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      total: Math.round(total * 10) / 10,
+    };
+  });
 
   return (
     <Box>
@@ -114,44 +128,57 @@ export default function Dashboard() {
                 icon={<HistoryIcon fontSize="small" />}
                 iconColor={theme.palette.primary.main}
                 label="Times logged"
-                value={measurements.length}
-                caption="Total measurements recorded"
+                value={daysLogged}
+                caption={daysLogged === 1 ? 'Day recorded' : 'Days recorded'}
               />
               <StatTile
                 icon={<TrendingDownIcon fontSize="small" />}
                 iconColor={theme.palette.success.main}
-                label="Most cm lost"
-                value={lossStat && lossStat.loss > 0 ? `${lossStat.loss.toFixed(1)} cm` : '–'}
-                caption={lossStat && lossStat.loss > 0 ? formatBodyPartLabel(lossStat.part) : 'Log a body part twice to see this'}
+                label="Total cm lost"
+                value={totalLoss > 0 ? `${totalLoss.toFixed(1)} cm` : '–'}
+                caption={totalLoss > 0 ? 'Combined loss across all tracked parts' : 'Log a body part twice to see this'}
               />
             </Stack>
 
             <Card variant="outlined" sx={{ borderRadius: 3 }}>
               <CardContent>
-                <Typography variant="h6" mb={2}>Measurements</Typography>
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 24 }}>
-                    <CartesianGrid vertical={false} stroke={theme.palette.divider} />
-                    <XAxis
-                      dataKey="part"
-                      tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
-                      angle={-30}
-                      textAnchor="end"
-                      interval={0}
-                      height={50}
-                      axisLine={{ stroke: theme.palette.divider }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={36}
-                    />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: alpha(theme.palette.primary.main, 0.06) }} />
-                    <Bar dataKey="cm" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} maxBarSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <Typography variant="h6">Combined total</Typography>
+                <Typography variant="body2" color="text.secondary" mb={2}>
+                  Sum of your latest logged value across every tracked body part, over time.
+                </Typography>
+                {trendData.length < 2 ? (
+                  <Box display="flex" alignItems="center" justifyContent="center" height={200}>
+                    <Typography color="text.secondary">Log on another day to see this trend develop.</Typography>
+                  </Box>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <LineChart data={trendData} margin={{ top: 24, right: 24, left: 0, bottom: 8 }}>
+                      <CartesianGrid vertical={false} stroke={theme.palette.divider} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
+                        axisLine={{ stroke: theme.palette.divider }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={['auto', 'auto']}
+                        tick={{ fontSize: 11, fill: theme.palette.text.secondary }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={44}
+                      />
+                      <Tooltip content={<ChartTooltip />} cursor={{ stroke: theme.palette.divider }} />
+                      <Line
+                        type="monotone"
+                        dataKey="total"
+                        stroke={theme.palette.primary.main}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4, strokeWidth: 2, stroke: theme.palette.background.paper }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </Stack>
