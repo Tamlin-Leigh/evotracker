@@ -54,12 +54,12 @@ function NavCard({ icon, iconColor, title, description, to }) {
 
 function StatTile({ icon, iconColor, label, value, caption }) {
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3, flex: '1 1 240px', minWidth: 220 }}>
+    <Card variant="outlined" sx={{ borderRadius: 3, flex: '1 1 240px', minWidth: 220, m:1}}>
       <CardContent>
-        <Stack direction="row" alignItems="flex-start" gap={1.5}>
+        <Stack direction="row" alignItems="center" gap={1.5}>
           <Avatar
             variant="rounded"
-            sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: alpha(iconColor, 0.12), color: iconColor }}
+            sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: alpha(iconColor, 0.12), color: iconColor, margin: 1 }}
           >
             {icon}
           </Avatar>
@@ -77,7 +77,7 @@ function StatTile({ icon, iconColor, label, value, caption }) {
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <Box sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 1.5, px: 1.5, py: 1, boxShadow: 3 }}>
+    <Box sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 1.5, px: 1.5, py: 1, boxShadow: 3}}>
       <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
       <Typography variant="body2" fontWeight={700}>{payload[0].value} cm</Typography>
     </Box>
@@ -184,10 +184,10 @@ export default function Dashboard() {
             <Button variant="contained" component={Link} to="/measurements">Add Measurements</Button>
           </Card>
         ) : (
-          <Stack gap={3}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2.5}>
+          <Stack gap={3} >
+            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2.5} >
               <StatTile
-                icon={<HistoryIcon fontSize="small" />}
+                icon={<HistoryIcon fontSize="small"/>}
                 iconColor={theme.palette.primary.main}
                 label="Times logged"
                 value={daysLogged}
@@ -202,7 +202,7 @@ export default function Dashboard() {
               />
             </Stack>
 
-            <Card variant="outlined" sx={{ borderRadius: 3 }}>
+            <Card variant="outlined" sx={{ borderRadius: 3 , m:1}}>
               <CardContent>
                 <Typography variant="h6">Combined total</Typography>
                 <Typography variant="body2" color="text.secondary" mb={2}>
