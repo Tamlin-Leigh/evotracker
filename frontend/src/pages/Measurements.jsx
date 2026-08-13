@@ -71,13 +71,13 @@ export default function Measurements() {
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'flex-start', mb: 4 }}>
           <Paper elevation={2} sx={{ p: 3, flexShrink: 0, width: { xs: '100%', md: Math.max(DISPLAY_WIDTH + 48, 260) } }}>
-            <Typography variant="h6" mb={2}>Select a Body Part</Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>Select a Body Part</Typography>
             <BodyOutline selectedPart={form.body_part} onSelectPart={handleSelectPart} />
           </Paper>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flexGrow: 1, width: '100%' }}>
             <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" mb={2}>Log a Measurement</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>Log a Measurement</Typography>
               <Box component="form" onSubmit={handleSubmit}>
                 <Grid container spacing={2}>
                   <Grid size={12}>
