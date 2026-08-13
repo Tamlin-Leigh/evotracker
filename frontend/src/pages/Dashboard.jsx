@@ -12,6 +12,45 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import HistoryIcon from '@mui/icons-material/History';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import AddchartIcon from '@mui/icons-material/Addchart';
+import StraightenIcon from '@mui/icons-material/Straighten';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import PersonIcon from '@mui/icons-material/Person';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+
+function NavCard({ icon, iconColor, title, description, to }) {
+  return (
+    <Card
+      variant="outlined"
+      component={Link}
+      to={to}
+      sx={{
+        borderRadius: 3,
+        flex: '1 1 240px',
+        minWidth: 220,
+        margin: 1,
+        textDecoration: 'none',
+        transition: 'box-shadow 0.15s, transform 0.15s',
+        '&:hover': { boxShadow: 4, transform: 'translateY(-2px)' },
+      }}
+    >
+      <CardContent>
+        <Stack direction="row" alignItems="center" gap={1.5}>
+          <Avatar
+            variant="rounded"
+            sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: alpha(iconColor, 0.12), color: iconColor, margin:1 }}
+          >
+            {icon}
+          </Avatar>
+          <Box flexGrow={1}>
+            <Typography variant="subtitle1" fontWeight={700} color="text.primary">{title}</Typography>
+            <Typography variant="body2" color="text.secondary">{description}</Typography>
+          </Box>
+          <ChevronRightIcon sx={{ color: 'text.secondary' }} />
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
 
 function StatTile({ icon, iconColor, label, value, caption }) {
   return (
@@ -96,6 +135,7 @@ export default function Dashboard() {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>evoTracker</Typography>
           <Button color="inherit" component={Link} to="/measurements">Measurements</Button>
           <Button color="inherit" component={Link} to="/progress">Progress</Button>
+          <Button color="inherit" component={Link} to="/profile">Profile</Button>
           <Button color="inherit" onClick={handleSignOut}>Sign Out</Button>
         </Toolbar>
       </AppBar>
@@ -105,10 +145,34 @@ export default function Dashboard() {
           <Typography variant="h5" fontWeight={700} mb={0.5}>
             Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
           </Typography>
-          <Typography color="text.secondary">
+          <Typography sx={{ color: 'text.secondary', mb: 1 }}>
             Here's a snapshot of your tracked body parts.
           </Typography>
         </Box>
+
+        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2.5} mb={2} >
+          <NavCard
+            icon={<StraightenIcon fontSize="small" />}
+            iconColor={theme.palette.primary.main}
+            title="Measurements"
+            description="Log and review your entries"
+            to="/measurements"
+          />
+          <NavCard
+            icon={<ShowChartIcon fontSize="small" />}
+            iconColor={theme.palette.success.main}
+            title="Progress"
+            description="See your trends over time"
+            to="/progress"
+          />
+          <NavCard
+            icon={<PersonIcon fontSize="small" />}
+            iconColor={theme.palette.secondary.main}
+            title="Profile"
+            description="Manage your details"
+            to="/profile"
+          />
+        </Stack>
 
         {loading ? (
           <Box display="flex" justifyContent="center" mt={8}><CircularProgress /></Box>
@@ -116,7 +180,7 @@ export default function Dashboard() {
           <Card variant="outlined" sx={{ textAlign: 'center', p: 5, borderRadius: 3, borderStyle: 'dashed' }}>
             <AddchartIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
             <Typography variant="h6">No measurements yet</Typography>
-            <Typography color="text.secondary" mb={2}>Start logging to see your progress here.</Typography>
+            <Typography color="text.secondary" sx={{ color: 'text.secondary', mb: 1 }}>Start logging to see your progress here.</Typography>
             <Button variant="contained" component={Link} to="/measurements">Add Measurements</Button>
           </Card>
         ) : (
