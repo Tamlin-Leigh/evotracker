@@ -2,37 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\FirestoreService;
+use App\Models\Measurement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MeasurementController extends Controller
 {
-    public function __construct(private FirestoreService $firestore) {}
-
     public function index(Request $request): JsonResponse
     {
-        $uid  = $request->firebase_uid;
-        $docs = $this->firestore->runQuery(
-            "users/{$uid}",
-            'measurements',
-            [['field' => 'measured_at', 'direction' => 'DESCENDING']]
-        );
+        $measurements = Measurement::where('user_id', $request->user()->id)
+            ->orderByDesc('measured_at')
+            ->get();
 
-        return response()->json($docs);
+        return response()->json($measurements);
     }
 
     public function byPart(Request $request, string $part): JsonResponse
     {
-        $uid  = $request->firebase_uid;
-        $docs = $this->firestore->runQuery(
-            "users/{$uid}",
-            'measurements',
-            [['field' => 'measured_at', 'direction' => 'ASCENDING']],
-            ['field' => 'body_part', 'op' => 'EQUAL', 'value' => $part]
-        );
+        $measurements = Measurement::where('user_id', $request->user()->id)
+            ->where('body_part', $part)
+            ->orderBy('measured_at')
+            ->get();
 
-        return response()->json($docs);
+        return response()->json($measurements);
     }
 
     public function store(Request $request): JsonResponse
@@ -42,38 +34,36 @@ class MeasurementController extends Controller
             'value_cm'  => 'required|numeric',
         ]);
 
-        $uid   = $request->firebase_uid;
-        $now   = now();
-        $today = $now->toDateString();
+        $userId = $request->user()->id;
+        $now    = now();
 
-        $existing = collect($this->firestore->runQuery(
-            "users/{$uid}",
-            'measurements',
-            [],
-            ['field' => 'body_part', 'op' => 'EQUAL', 'value' => $request->body_part]
-        ))->first(fn ($doc) => str_starts_with($doc['measured_at'], $today));
+        $measurement = Measurement::where('user_id', $userId)
+            ->where('body_part', $request->body_part)
+            ->whereDate('measured_at', $now->toDateString())
+            ->first();
 
-        $data = [
-            'body_part'   => $request->body_part,
-            'value_cm'    => (float) $request->value_cm,
-            'measured_at' => $now->toDateTimeString(),
-        ];
-
-        if ($existing) {
-            $id = $existing['id'];
-            $this->firestore->setDocument("users/{$uid}/measurements/{$id}", $data, merge: true);
+        if ($measurement) {
+            $measurement->update([
+                'value_cm'    => $request->value_cm,
+                'measured_at' => $now,
+            ]);
         } else {
-            $data['created_at'] = $now->toDateTimeString();
-            $id = $this->firestore->addDocument("users/{$uid}/measurements", $data);
+            $measurement = Measurement::create([
+                'user_id'     => $userId,
+                'body_part'   => $request->body_part,
+                'value_cm'    => $request->value_cm,
+                'measured_at' => $now,
+            ]);
         }
 
-        return response()->json(['id' => $id, 'message' => 'Measurement saved.'], 201);
+        return response()->json(['id' => $measurement->id, 'message' => 'Measurement saved.'], 201);
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $uid = $request->firebase_uid;
-        $this->firestore->deleteDocument("users/{$uid}/measurements/{$id}");
+        Measurement::where('user_id', $request->user()->id)
+            ->where('id', $id)
+            ->delete();
 
         return response()->json(['message' => 'Measurement deleted.']);
     }

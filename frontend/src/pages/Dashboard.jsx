@@ -1,7 +1,5 @@
 import { useAuth } from '../hooks/useAuth';
 import { useMeasurements } from '../hooks/useMeasurements';
-import { signOut } from 'firebase/auth';
-import { auth } from '../services/firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   alpha, AppBar, Avatar, Box, Button, Card, CardContent, CircularProgress,
@@ -48,13 +46,13 @@ function ChartTooltip({ active, payload, label }) {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { measurements, loading } = useMeasurements();
   const navigate = useNavigate();
   const theme = useTheme();
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await logout();
     navigate('/login');
   };
 

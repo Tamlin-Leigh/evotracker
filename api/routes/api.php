@@ -1,12 +1,18 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MeasurementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgressController;
-use App\Http\Middleware\VerifyFirebaseToken;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(VerifyFirebaseToken::class)->group(function () {
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+
     Route::post('/measurements', [MeasurementController::class, 'store']);
     Route::get('/measurements', [MeasurementController::class, 'index']);
     Route::get('/measurements/{part}', [MeasurementController::class, 'byPart']);

@@ -1,14 +1,24 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import api from '../services/api';
+import { getStoredUser, logout as logoutRequest } from '../services/auth';
 
 export function useAuth() {
   const [user, setUser] = useState(undefined);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return unsubscribe;
+    if (!getStoredUser()) {
+      setUser(null);
+      return;
+    }
+    api.get('/me')
+      .then(({ data }) => setUser(data))
+      .catch(() => setUser(null));
   }, []);
 
-  return { user, loading: user === undefined };
+  const logout = async () => {
+    await logoutRequest();
+    setUser(null);
+  };
+
+  return { user, loading: user === undefined, logout };
 }
