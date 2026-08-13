@@ -2,21 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\FirestoreService;
+use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    public function __construct(private FirestoreService $firestore) {}
-
     public function show(Request $request): JsonResponse
     {
-        $uid  = $request->firebase_uid;
-        $data = $this->firestore->getDocument("users/{$uid}/profile/data");
+        $profile = Profile::where('user_id', $request->user()->id)->first();
 
-        return $data
-            ? response()->json($data)
+        return $profile
+            ? response()->json($profile)
             : response()->json(null, 404);
     }
 
@@ -32,19 +29,15 @@ class ProfileController extends Controller
             'goal_note'  => 'nullable|string|max:500',
         ]);
 
-        $uid = $request->firebase_uid;
-        $fields = array_filter([
-            'first_name' => $request->first_name,
-            'last_name'  => $request->last_name,
-            'age'        => $request->age,
-            'height'     => $request->height,
-            'weight'     => $request->weight,
-            'gender'     => $request->gender,
-            'goal_note'  => $request->goal_note,
-            'updated_at' => now()->toDateTimeString(),
-        ], fn($v) => !is_null($v));
+        $fields = array_filter(
+            $request->only(['first_name', 'last_name', 'age', 'height', 'weight', 'gender', 'goal_note']),
+            fn ($v) => !is_null($v)
+        );
 
-        $this->firestore->setDocument("users/{$uid}/profile/data", $fields, true);
+        Profile::updateOrCreate(
+            ['user_id' => $request->user()->id],
+            $fields
+        );
 
         return response()->json(['message' => 'Profile updated.']);
     }

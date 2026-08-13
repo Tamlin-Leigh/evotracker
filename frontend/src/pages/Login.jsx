@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-} from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { login, register } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Alert } from '@mui/material';
 import { AppInput, PasswordInput, PrimaryButton } from '../components/ui';
@@ -32,7 +28,7 @@ export default function AuthPage() {
     setError('');
     setBusy(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await login(email, password);
       navigate('/dashboard');
     } catch {
       setError('Invalid email or password.');
@@ -50,10 +46,10 @@ export default function AuthPage() {
     }
     setBusy(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      await register(email, password);
       navigate('/onboarding');
     } catch (err) {
-      setError(err.message ?? 'Could not create account.');
+      setError(err?.response?.data?.message ?? 'Could not create account.');
     } finally {
       setBusy(false);
     }

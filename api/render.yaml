@@ -12,8 +12,3 @@ services:
         value: false
       - key: APP_KEY
         generateValue: true
-      - key: FIREBASE_CREDENTIALS
-        value: /etc/secrets/firebase-credentials.json
-    secretFiles:
-      - name: firebase-credentials.json
-        mountPath: /etc/secrets/firebase-credentials.json
