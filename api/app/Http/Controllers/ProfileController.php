@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Photo;
 use App\Models\Profile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -12,9 +15,16 @@ class ProfileController extends Controller
     {
         $profile = Profile::where('user_id', $request->user()->id)->first();
 
-        return $profile
-            ? response()->json($profile)
-            : response()->json(null, 404);
+        if (!$profile) {
+            return response()->json(null, 404);
+        }
+
+        $photo = $profile->currentPhoto();
+
+        return response()->json([
+            ...$profile->toArray(),
+            'photo_url' => $photo ? Storage::disk($photo->disk)->url($photo->path) : null,
+        ]);
     }
 
     public function update(Request $request): JsonResponse
@@ -40,5 +50,46 @@ class ProfileController extends Controller
         );
 
         return response()->json(['message' => 'Profile updated.']);
+    }
+
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|max:2048',
+        ]);
+
+        $profile = Profile::firstOrCreate(['user_id' => $request->user()->id]);
+
+        $file = $request->file('photo');
+        $path = $file->store('profile-photos', 'public');
+
+        $photo = Photo::create([
+            'disk' => 'public',
+            'path' => $path,
+            'original_filename' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+        ]);
+
+        DB::table('profile_photo')->where('profile_id', $profile->id)->update(['is_current' => false]);
+        $profile->photos()->attach($photo->id, ['is_current' => true]);
+
+        return response()->json([
+            'message' => 'Photo uploaded.',
+            'photo_url' => Storage::disk('public')->url($path),
+        ]);
+    }
+
+    public function deletePhoto(Request $request): JsonResponse
+    {
+        $profile = Profile::where('user_id', $request->user()->id)->first();
+        $photo = $profile?->currentPhoto();
+
+        if ($photo) {
+            Storage::disk($photo->disk)->delete($photo->path);
+            $photo->delete();
+        }
+
+        return response()->json(['message' => 'Photo removed.']);
     }
 }
